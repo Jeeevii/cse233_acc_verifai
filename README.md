@@ -12,7 +12,7 @@
 
 1. Activate the virtual environment where Scenic and VerifAI are installed.
 2. Open Carla simulator 
-3. To run an experiment run the python script `falsifier.py` with parameters: `--model carla` `--path path/to/scenario` eg: `--path scenarios-ddas/persistent_attack.scenic` `--e output_name` (to name the file where the falsification table will be stored) `--route folder` (to create a new folder to save the results of your simulation
+3. To run an experiment run the python script `falsifier.py` with parameters: `--model carla` `--path path/to/scenario` eg: `--path scenarios-ddas/persistent_attack.scenic` `--e output_name` (to name the file where the falsification table will be stored) `--route folder` (to create a new folder to save the results of your simulation)
 
 # Additional notes
 

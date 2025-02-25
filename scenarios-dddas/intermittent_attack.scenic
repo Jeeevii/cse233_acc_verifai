@@ -3,6 +3,7 @@
 from controllers.acc import AccControl
 from controllers.lateral_control import LateralControl
 
+param address = '172.22.48.1'
 
 param map = localPath('../maps/Town06.xodr')
 param carla_map = 'Town06'

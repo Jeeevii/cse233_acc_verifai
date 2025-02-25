@@ -191,7 +191,7 @@ Arguments:
 
 
 def run_experiment(path, parallel=False, model=None,
-                   sampler_type=None, headless=False, num_workers=5):
+                   sampler_type=None, headless=False, num_workers=500):
     announce(f'RUNNING SCENIC SCRIPT {path}')
     model = f'scenic.simulators.{model}.model' if model else None
     params = {'verifaiSamplerType': sampler_type} if sampler_type else {}
@@ -200,7 +200,7 @@ def run_experiment(path, parallel=False, model=None,
         params['model'] = model
     sampler = ScenicSampler.fromScenario(path, **params)
     falsifier_params = DotMap(
-        n_iters=100,
+        n_iters=500,
         save_error_table=True,
         save_safe_table=True,
     )
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', '-p', type=str, default='scenarios/platv1a.scenic',
                         help='Path to Scenic script')
     parser.add_argument('--parallel', action='store_true')
-    parser.add_argument('--num-workers', type=int, default=5,
+    parser.add_argument('--num-workers', type=int, default=500,
                         help='Number of parallel workers')
     parser.add_argument('--sampler-type', '-s', type=str, default=None,
                         help='verifaiSamplerType to use')
