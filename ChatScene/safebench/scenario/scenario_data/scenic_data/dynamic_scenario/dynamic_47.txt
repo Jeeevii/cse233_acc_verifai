@@ -1,5 +1,5 @@
-'''The ego vehicle is going straight through the intersection; the adversarial vehicle approaches from the left front and cuts off the ego vehicle.'''
-Town = 'Town05'
+'''The ego vehicle starts from a highway on-ramp and merges with traffic, making sudden lane changes at varying speeds. An ACC vehicle follows closely behind, trying to adjust to the merging situation by braking and accelerating to maintain a safe distance. The scenario tests ACC vehicle performance during unexpected lane changes.'''
+Town = 'Town03'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
 model scenic.simulators.carla.model
@@ -14,18 +14,22 @@ behavior AdvBehavior():
 
 param OPT_ADV_SPEED = Range(0, 20)  # Controls the speed of the adversarial vehicle.
 param OPT_ADV_DISTANCE = Range(10, 30)  # The distance at which the adversarial vehicle starts its lane change maneuver.
-intersection = Uniform(*filter(lambda i: i.is4Way and not i.isSignalized, network.intersections))
-egoInitLane = Uniform(*intersection.incomingLanes)
-egoManeuver = Uniform(*filter(lambda m: m.type is ManeuverType.STRAIGHT, egoInitLane.maneuvers))
-egoTrajectory = [egoInitLane, egoManeuver.connectingLane, egoManeuver.endLane]
-egoSpawnPt = OrientedPoint in egoManeuver.startLane.centerline
+# Identifying lane sections with both left and right lanes moving in the same forward direction
+laneSecsWithBothSides = []
+for lane in network.lanes:
+    for laneSec in lane.sections:
+        if (laneSec._laneToLeft is not None and laneSec._laneToLeft.isForward == laneSec.isForward) and 
+           (laneSec._laneToRight is not None and laneSec._laneToRight.isForward == laneSec.isForward):
+            laneSecsWithBothSides.append(laneSec)
 
-# Setting up the ego vehicle at the initial position
+# Selecting a random lane section from identified sections for the ego vehicle
+egoLaneSec = Uniform(*laneSecsWithBothSides)
+egoSpawnPt = OrientedPoint in egoLaneSec.centerline
+
+# Ego vehicle setup
 ego = Car at egoSpawnPt,
     with regionContainedIn None,
     with blueprint EGO_MODEL
-
-require 10 <= (distance to intersection) <= 40
 # Setup the leading vehicle's spawn point directly in front of the ego to simulate a slow-moving vehicle
 param OPT_LEADING_DISTANCE = Range(0, 30)
 param OPT_LEADING_SPEED = Range(1, 5)
@@ -33,9 +37,9 @@ LeadingSpawnPt = OrientedPoint following roadDirection from egoSpawnPt for globa
 LeadingAgent = Car at LeadingSpawnPt,
     with behavior FollowLaneBehavior(target_speed=globalParameters.OPT_LEADING_SPEED)
 
-# Identifying the adjacent lane to the left for the Adversarial Agent and setting its spawn point further in front
+# Identifying the adjacent lane for the Adversarial Agent and setting its spawn point further in front
 param OPT_GEO_Y_DISTANCE = Range(0, 30)
-advLane = network.laneSectionAt(ego)._laneToLeft.lane
+advLane = network.laneSectionAt(ego)._laneToRight.lane
 IntSpawnPt = OrientedPoint following roadDirection from egoSpawnPt for globalParameters.OPT_GEO_Y_DISTANCE
 projectPt = Vector(*advLane.centerline.project(IntSpawnPt.position).coords[0])
 advHeading = advLane.orientation[projectPt]

@@ -1,5 +1,5 @@
-'''The ego encounters a parked car blocking its lane and must use the opposite lane to bypass the vehicle when an oncoming car suddenly accelerates, closing the gap for the ego to safely return to its lane, necessitating the ego to quickly decide whether to accelerate or brake to avoid a collision.'''
-Town = 'Town01'
+'''The ego vehicle, while merging, crosses into the ACC vehicle's lane unexpectedly. The ACC vehicle must adapt by either braking or changing lanes to avoid a collision. This scenario tests the ACC system's ability to react to sudden lane blockages by other vehicles.'''
+Town = 'Town03'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
 model scenic.simulators.carla.model
@@ -8,23 +8,30 @@ EGO_MODEL = "vehicle.lincoln.mkz_2017"
 behavior AdvBehavior():
     while (distance to self) > 60:
         wait  # The adversarial car waits until it is within 60 meters of the ego vehicle.
-    do FollowLaneBehavior(globalParameters.OPT_ADV_SPEED) until (distance to self) < globalParameters.OPT_ADV_DISTANCE
-    while True:
-        take SetThrottleAction(globalParameters.OPT_ADV_THROTTLE)  # Aggressively adjusts its speed to close the gap.
 
-param OPT_ADV_SPEED = Range(0, 10)  # Controls the initial speed of the adversarial car.
-param OPT_ADV_DISTANCE = Range(0, 20)  # Specifies the distance at which the car begins its aggressive maneuver.
-param OPT_ADV_THROTTLE = Range(0.5, 1)  # Determines the intensity of the acceleration.
-# Collecting lane sections that have a left lane (opposite traffic direction) and no right lane (single forward road)
-laneSecsWithLeftLane = []
+    do FollowLaneBehavior(globalParameters.OPT_ADV_SPEED) until (
+        distance to self < globalParameters.OPT_ADV_DISTANCE)
+
+    while True:
+        take SetSteerAction(globalParameters.OPT_ADV_STEER)  # Adjust steering dynamically.
+
+        # Wait for a dynamically determined duration before changing steering again.
+        for _ in range(globalParameters.OPT_WAIT_STEER):
+            wait
+
+param OPT_ADV_SPEED = Range(0, 20)  # Controls the initial speed of the adversarial car.
+param OPT_ADV_DISTANCE = Range(0, 20)  # Specifies the distance at which the car begins its maneuver.
+param OPT_ADV_STEER = Range(-1, 1)  # Range for steering actions.
+param OPT_WAIT_STEER = Range(5, 20)  # Variable wait time before changing steering.
+# Identifying lane sections with a right lane moving in the same forward direction
+laneSecsWithRightLane = []
 for lane in network.lanes:
     for laneSec in lane.sections:
-        if laneSec._laneToLeft is not None and laneSec._laneToRight is None:
-            if laneSec._laneToLeft.isForward != laneSec.isForward:
-                laneSecsWithLeftLane.append(laneSec)
+        if laneSec._laneToRight is not None and laneSec._laneToRight.isForward == laneSec.isForward:
+            laneSecsWithRightLane.append(laneSec)
 
-# Selecting a random lane section that matches the criteria
-egoLaneSec = Uniform(*laneSecsWithLeftLane)
+# Selecting a random lane section from identified sections for the ego vehicle
+egoLaneSec = Uniform(*laneSecsWithRightLane)
 egoSpawnPt = OrientedPoint in egoLaneSec.centerline
 
 # Ego vehicle setup

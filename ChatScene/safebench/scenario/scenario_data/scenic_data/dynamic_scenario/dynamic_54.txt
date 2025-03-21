@@ -1,5 +1,5 @@
-'''The ego vehicle is turning right; the adversarial car (positioned behind on the right) suddenly accelerates and then decelerates.'''
-Town = 'Town05'
+'''The ego vehicle merges onto a highway from an on-ramp and rapidly changes lanes in front of an ACC vehicle, forcing the ACC vehicle to brake and accelerate to avoid a collision. The scenario tests the ACC system’s ability to react to sudden lane changes and rapid speed adjustments.'''
+Town = 'Town03'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
 model scenic.simulators.carla.model
@@ -31,12 +31,19 @@ param OPT_ADV_THROTTLE = Range(0, 1)  # Aggressive throttle range.
 param OPT_ADV_BREAK = Range(0, 1)  # Determines the intensity of the braking.
 param OPT_WAIT_THROTTLE = Range(5, 20)  # Variable wait time between throttle changes.
 param OPT_WAIT_BRAKE = Range(5, 20)  # Variable wait time between brake applications.
-intersection = Uniform(*filter(lambda i: i.is4Way or i.is3Way, network.intersections))
-egoManeuver = Uniform(*filter(lambda m: m.type is ManeuverType.RIGHT_TURN, intersection.maneuvers))
-egoInitLane = egoManeuver.startLane
-egoTrajectory = [egoInitLane, egoManeuver.connectingLane, egoManeuver.endLane]
-egoSpawnPt = OrientedPoint in egoInitLane.centerline
+# Identifying lane sections with both left and right lanes moving in the same forward direction
+laneSecsWithBothSides = []
+for lane in network.lanes:
+    for laneSec in lane.sections:
+        if (laneSec._laneToLeft is not None and laneSec._laneToLeft.isForward == laneSec.isForward) and 
+           (laneSec._laneToRight is not None and laneSec._laneToRight.isForward == laneSec.isForward):
+            laneSecsWithBothSides.append(laneSec)
 
+# Selecting a random lane section from identified sections for the ego vehicle
+egoLaneSec = Uniform(*laneSecsWithBothSides)
+egoSpawnPt = OrientedPoint in egoLaneSec.centerline
+
+# Ego vehicle setup
 ego = Car at egoSpawnPt,
     with regionContainedIn None,
     with blueprint EGO_MODEL

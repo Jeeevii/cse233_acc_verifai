@@ -1,4 +1,4 @@
-import setGPU
+#import setGPU
 import os
 import csv
 import pickle
@@ -31,7 +31,7 @@ behavior_prompt = load_file(osp.join(local_path, 'retrieve', 'prompts', 'behavio
 geometry_prompt = load_file(osp.join(local_path, 'retrieve', 'prompts', 'geometry.txt'))
 spawn_prompt = load_file(osp.join(local_path, 'retrieve', 'prompts', 'spawn.txt'))
 scenario_descriptions = load_file(osp.join(local_path, 'retrieve', 'scenario_descriptions.txt')).split('\n')
-encoder = SentenceTransformer('sentence-transformers/sentence-t5-large', device='cuda')
+encoder = SentenceTransformer('sentence-transformers/sentence-t5-large', device='cpu')
 
 with open(osp.join(local_path, 'retrieve/database_v1.pkl'), 'rb') as file:
     database = pickle.load(file)
@@ -42,9 +42,9 @@ behavior_snippets = database['behavior']['snippet']
 geometry_snippets = database['geometry']['snippet']
 spawn_snippets = database['spawn']['snippet']
 
-behavior_embeddings = encoder.encode(behavior_descriptions, device='cuda', convert_to_tensor=True)
-geometry_embeddings = encoder.encode(geometry_descriptions, device='cuda', convert_to_tensor=True)
-spawn_embeddings = encoder.encode(spawn_descriptions, device='cuda', convert_to_tensor=True)
+behavior_embeddings = encoder.encode(behavior_descriptions, device='cpu', convert_to_tensor=True)
+geometry_embeddings = encoder.encode(geometry_descriptions, device='cpu', convert_to_tensor=True)
+spawn_embeddings = encoder.encode(spawn_descriptions, device='cpu', convert_to_tensor=True)
 
 ## this is the head for scenic file, you can modified the carla map or ego model here
 head = '''param map = localPath(f'../maps/{Town}.xodr') 

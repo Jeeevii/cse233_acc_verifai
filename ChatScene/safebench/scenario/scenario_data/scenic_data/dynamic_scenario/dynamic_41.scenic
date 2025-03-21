@@ -1,29 +1,29 @@
-'''The ego vehicle is performing a lane change to evade a slow-moving vehicle; the adversarial car in the target lane on the right front suddenly brakes, causing the ego vehicle to react quickly to avoid a collision.'''
-Town = 'Town03'
+'''The ego vehicle begins a series of sudden merges on the highway, moving unpredictably in and out of lanes, forcing an ACC vehicle to react by adjusting its speed and maintaining a safe distance. The goal is to evaluate the ACC system's ability to handle sudden lane changes and maintain safe following distances on a busy highway.'''
+Town = 'Town01'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
 model scenic.simulators.carla.model
 EGO_MODEL = "vehicle.lincoln.mkz_2017"
 
-param OPT_ADV_SPEED = Range(5, 10)  # Adversarial vehicle's cruising speed
-param OPT_ADV_DISTANCE = Range(0, 20)  # Distance threshold to initiate braking
-param OPT_BRAKE = Range(0, 1)  # Braking intensity, where 1 represents full braking
-
 behavior AdvBehavior():
-    # Follow the lane at the defined speed until close enough to the ego vehicle
+    while (distance to self) > 60:
+        wait  # The adversarial vehicle maintains its course until it closes in on a specified proximity.
     do FollowLaneBehavior(target_speed=globalParameters.OPT_ADV_SPEED) until (distance to self) < globalParameters.OPT_ADV_DISTANCE
-    # Once within the distance threshold, execute a sudden brake to test the ego vehicle's response capabilities
-    while True:
-        take SetBrakeAction(globalParameters.OPT_BRAKE)
-# Identifying lane sections with a right lane moving in the same forward direction
-laneSecsWithRightLane = []
+    # Once within a certain distance, the adversarial vehicle executes a lane change.
+    do LaneChangeBehavior(laneSectionToSwitch=network.laneSectionAt(ego), target_speed=globalParameters.OPT_ADV_SPEED)
+
+param OPT_ADV_SPEED = Range(0, 20)  # Controls the speed of the adversarial vehicle.
+param OPT_ADV_DISTANCE = Range(10, 30)  # The distance at which the adversarial vehicle starts its lane change maneuver.
+# Collecting lane sections that have a left lane (opposite traffic direction) and no right lane (single forward road)
+laneSecsWithLeftLane = []
 for lane in network.lanes:
     for laneSec in lane.sections:
-        if laneSec._laneToRight is not None and laneSec._laneToRight.isForward == laneSec.isForward:
-            laneSecsWithRightLane.append(laneSec)
+        if laneSec._laneToLeft is not None and laneSec._laneToRight is None:
+            if laneSec._laneToLeft.isForward != laneSec.isForward:
+                laneSecsWithLeftLane.append(laneSec)
 
-# Selecting a random lane section from identified sections for the ego vehicle
-egoLaneSec = Uniform(*laneSecsWithRightLane)
+# Selecting a random lane section that matches the criteria
+egoLaneSec = Uniform(*laneSecsWithLeftLane)
 egoSpawnPt = OrientedPoint in egoLaneSec.centerline
 
 # Ego vehicle setup

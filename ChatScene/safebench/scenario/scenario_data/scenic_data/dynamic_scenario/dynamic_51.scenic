@@ -1,4 +1,4 @@
-'''The ego vehicle is driving on a straight road; the adversarial pedestrian appears from a driveway on the left and suddenly stop and walk diagonally.'''
+'''The ego vehicle performs an erratic lane change in front of an ACC vehicle, causing the ACC vehicle to brake suddenly. The scenario tests the ACC system’s ability to adapt to sudden, unpredictable maneuvers by the lead vehicle.'''
 Town = 'Town05'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
@@ -6,22 +6,14 @@ model scenic.simulators.carla.model
 EGO_MODEL = "vehicle.lincoln.mkz_2017"
 
 behavior AdvBehavior():
-    initialDirection = self.heading
-    while (distance to self) > globalParameters.OPT_ADV_DISTANCE:
-        wait
-    while True:
-        take SetWalkingDirectionAction(initialDirection)
-        take SetWalkingSpeedAction(globalParameters.OPT_ADV_SPEED)
-        for _ in range(globalParameters.OPT_WAIT_STEP_1):
-            wait
-        take SetWalkingSpeedAction(0)  # Stop suddenly
-        for _ in range(globalParameters.OPT_WAIT_STEP_2):
-            wait
+    while (distance to self) > 60:
+        wait  # The adversarial vehicle maintains its course until it closes in on a specified proximity.
+    do FollowLaneBehavior(target_speed=globalParameters.OPT_ADV_SPEED) until (distance to self) < globalParameters.OPT_ADV_DISTANCE
+    # Once within a certain distance, the adversarial vehicle executes a lane change.
+    do LaneChangeBehavior(laneSectionToSwitch=network.laneSectionAt(ego), target_speed=globalParameters.OPT_ADV_SPEED)
 
-param OPT_ADV_SPEED = Range(0, 5)
-param OPT_ADV_DISTANCE = Range(0, 10)
-param OPT_WAIT_STEP_1 = Range(0, 30)  # Wait time in steps for the first direction
-param OPT_WAIT_STEP_2 = Range(0, 30)  # Wait time in steps for the second direction
+param OPT_ADV_SPEED = Range(0, 20)  # Controls the speed of the adversarial vehicle.
+param OPT_ADV_DISTANCE = Range(10, 30)  # The distance at which the adversarial vehicle starts its lane change maneuver.
 intersection = Uniform(*filter(lambda i: i.is4Way and not i.isSignalized, network.intersections))
 egoInitLane = Uniform(*intersection.incomingLanes)
 egoManeuver = Uniform(*filter(lambda m: m.type is ManeuverType.STRAIGHT, egoInitLane.maneuvers))
@@ -41,15 +33,15 @@ LeadingSpawnPt = OrientedPoint following roadDirection from egoSpawnPt for globa
 LeadingAgent = Car at LeadingSpawnPt,
     with behavior FollowLaneBehavior(target_speed=globalParameters.OPT_LEADING_SPEED)
 
-# Identifying the adjacent lane to the left for the Adversarial Agent and setting its spawn point further in front
+# Identifying the adjacent lane for the Adversarial Agent and setting its spawn point further in front
 param OPT_GEO_Y_DISTANCE = Range(0, 30)
-advLane = network.laneSectionAt(ego)._laneToLeft.lane
+advLane = network.laneSectionAt(ego)._laneToRight.lane
 IntSpawnPt = OrientedPoint following roadDirection from egoSpawnPt for globalParameters.OPT_GEO_Y_DISTANCE
 projectPt = Vector(*advLane.centerline.project(IntSpawnPt.position).coords[0])
 advHeading = advLane.orientation[projectPt]
 
 # Spawn the Adversarial Agent
-AdvAgent = Pedestrian at projectPt,
+AdvAgent = Car at projectPt,
     with heading advHeading,
     with regionContainedIn None,
     with behavior AdvBehavior()

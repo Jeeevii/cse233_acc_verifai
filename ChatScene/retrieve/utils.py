@@ -8,7 +8,7 @@ def load_file(file_path):
         return file.read()
 
 def retrieve_topk(model, topk, descriptions, snippets, embeddings, current_description):
-    current_embedding = model.encode([current_description], device='cuda', convert_to_tensor=True)
+    current_embedding = model.encode([current_description], device='cpu', convert_to_tensor=True)
     scores = (current_embedding @ embeddings.T).squeeze(0)
     top_indices = scores.topk(k=topk).indices
     top_descriptions = [descriptions[i] for i in top_indices]

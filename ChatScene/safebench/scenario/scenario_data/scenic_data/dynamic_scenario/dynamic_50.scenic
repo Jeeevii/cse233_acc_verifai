@@ -1,4 +1,4 @@
-'''The ego vehicle is attempting to change lanes to avoid a slow-moving leading vehicle; the adversarial car in the target lane suddenly merges into the ego vehicle's original lane, blocking the ego vehicle from returning to its initial position.'''
+'''The ego vehicle is driving on a highway and performs a high-speed merge into a lane where an ACC vehicle is following. The ACC vehicle must react quickly to avoid tailgating and maintain a safe following distance by adjusting its speed.'''
 Town = 'Town01'
 param map = localPath(f'../maps/{Town}.xodr') 
 param carla_map = Town
@@ -6,16 +6,31 @@ model scenic.simulators.carla.model
 EGO_MODEL = "vehicle.lincoln.mkz_2017"
 
 behavior AdvBehavior():
-    do FollowLaneBehavior(target_speed=globalParameters.OPT_ADV_SPEED) until (
-        distance to self < globalParameters.OPT_ADV_DISTANCE and
-        len(network.laneSectionAt(self).adjacentLanes) != 0 )
-    # Identify the lane to switch into
-    weaveLaneSec = network.laneSectionAt(self).adjacentLanes[0]
-    # Execute the lane change
-    do LaneChangeBehavior(laneSectionToSwitch=weaveLaneSec, target_speed=globalParameters.OPT_ADV_SPEED)
+    while (distance to self) > 60:
+        wait  # The adversarial car waits until it is within 60 meters of the ego vehicle.
 
-param OPT_ADV_SPEED = Range(5, 10)
-param OPT_ADV_DISTANCE = Range(0, 20)
+    do FollowLaneBehavior(globalParameters.OPT_ADV_SPEED) until (
+        distance to self < globalParameters.OPT_ADV_DISTANCE)
+
+    while True:
+        take SetThrottleAction(globalParameters.OPT_ADV_THROTTLE)  # Aggressively adjusts acceleration.
+        
+        # Wait for a dynamically determined duration
+        for _ in range(globalParameters.OPT_WAIT_THROTTLE):
+            wait
+
+        take SetBrakeAction(globalParameters.OPT_ADV_BREAK)  # Aggressively adjusts braking.
+
+        # Wait for a dynamically determined duration
+        for _ in range(globalParameters.OPT_WAIT_BRAKE):
+            wait
+
+param OPT_ADV_SPEED = Range(0, 20)  # Controls the initial speed of the adversarial car.
+param OPT_ADV_DISTANCE = Range(0, 20)  # Specifies the distance at which the car begins its aggressive maneuver.
+param OPT_ADV_THROTTLE = Range(0, 1)  # Aggressive throttle range.
+param OPT_ADV_BREAK = Range(0, 1)  # Determines the intensity of the braking.
+param OPT_WAIT_THROTTLE = Range(5, 20)  # Variable wait time between throttle changes.
+param OPT_WAIT_BRAKE = Range(5, 20)  # Variable wait time between brake applications.
 # Collecting lane sections that have a left lane (opposite traffic direction) and no right lane (single forward road)
 laneSecsWithLeftLane = []
 for lane in network.lanes:
